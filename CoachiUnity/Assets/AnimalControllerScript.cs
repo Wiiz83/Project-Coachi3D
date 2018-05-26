@@ -8,7 +8,6 @@ public class AnimalControllerScript : MonoBehaviour {
 	//private Rigidbody rb;
 	// navigation
 	float speed = 0.5f;
-	bool isStopped = true;
 	private bool jumped = false;
 	private bool isOnBed = false;
 	NavMeshAgent agent;
@@ -59,10 +58,10 @@ public class AnimalControllerScript : MonoBehaviour {
 
 	void FixedUpdate () {
 		// Agent reached destination
-		if (Vector3.Distance (transform.position, agent.destination) <= 0.5f) {
-			if (!isStopped) {
-				stopAnimal ();
-			} else if (isOnBed) {
+		if (Vector3.Distance (agent.transform.position, agent.destination) <= 0.5f) {
+			anim_speed (0);
+			anim_stand ();
+			if (isOnBed) {
 				anim_lieDown ();
 			}
 		}
@@ -88,7 +87,6 @@ public class AnimalControllerScript : MonoBehaviour {
 
 	// Movements
 	public void moveTo (Vector3 destination) {
-		isStopped = false;
 		anim_walk ();
 		agent.destination = destination;
 	}
@@ -103,14 +101,7 @@ public class AnimalControllerScript : MonoBehaviour {
 		moveTo (center_point);
 	}
 
-	public void stopAnimal () {
-		stopMovement ();
-		anim_speed (0);
-		anim_stand ();
-	}
-
 	public void stopMovement () {
-		isStopped = true;
 		agent.destination = agent.transform.position;
 	}
 
