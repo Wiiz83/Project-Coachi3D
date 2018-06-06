@@ -3,91 +3,132 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+
+public enum State { STOPPEDATFLOOR, LYINGONBED, WALKING, JUMPINGHIGH, JUMPINGLOW }
+
 public class AnimalControllerScript : MonoBehaviour {
-	[SerializeField] Animator anim;
-	//private Rigidbody rb;
-	// navigation
-	float speed = 0.5f;
-	private bool jumped = false;
-	private bool isOnBed = false;
+	Animation anim;
 	NavMeshAgent agent;
-	// positions
 	Vector3 center_point;
 	Vector3 bed1_point;
 	Vector3 bed2_point;
+	State state;
 
 	void Start () {
 		//rb = GetComponent<Rigidbody> ();
 		center_point = GameObject.Find ("center_point").transform.position;
 		bed1_point = GameObject.Find ("bed1_point").transform.position;
 		bed2_point = GameObject.Find ("bed2_point").transform.position;
+		anim = GetComponent<Animation> ();
 		agent = GetComponent<NavMeshAgent> ();
-		anim_lieDown ();
 		agent.autoTraverseOffMeshLink = false;
-		isOnBed = isUp ();
+		agent.destination = agent.transform.position;
+		handleNewState (State.STOPPEDATFLOOR);
 	}
 
 	void Update () {
 
 		// move
 		if (Input.GetKeyDown (KeyCode.F1))
-			goToCenter ();
+			animLieDown ();
 		if (Input.GetKeyDown (KeyCode.F2))
 			goToBed1 ();
 		if (Input.GetKeyDown (KeyCode.F3))
 			goToBed2 ();
 		if (Input.GetKeyDown (KeyCode.S))
 			stopMovement ();
+	}
 
-		// state
-		if (Input.GetKeyDown (KeyCode.F5))
-			anim_sit ();
-		if (Input.GetKeyDown (KeyCode.F6))
-			anim_stand ();
-		if (Input.GetKeyDown (KeyCode.F7))
-			anim_lieDown ();
-		if (Input.GetKeyDown (KeyCode.F8))
-			anim_twoFeet ();
+	private void logState (State newState) {
+		Debug.Log ("State : " + this.state + " -->" + newState);
+	}
 
-		// action
-		if (Input.GetKeyDown (KeyCode.F9))
-			anim_bark ();
-		if (Input.GetKeyDown (KeyCode.F10))
-			anim_jump ();
+	private void handleNewState (State newState) {
+		if (state == newState) {
+			return;
+		}
+		logState (newState);
+		switch (newState) {
+			case State.STOPPEDATFLOOR:
+				{
+					animIdled ();
+					break;
+				}
+			case State.LYINGONBED:
+				{
+					if (state == State.JUMPINGHIGH) {
+						animLieDown ();
+						animRest ();
+					}
+					break;
+				}
+			case State.WALKING:
+				{
+					if (state == State.JUMPINGLOW || state == State.WALKING || state == State.STOPPEDATFLOOR) {
+						animWalk ();
+					}
+					break;
+
+				}
+			case State.JUMPINGHIGH:
+				{
+					if (state == State.WALKING || state == State.STOPPEDATFLOOR) {
+						animJumpHigh ();
+					}
+					break;
+
+				}
+			case State.JUMPINGLOW:
+				{
+					if (state == State.LYINGONBED) {
+						animJumpDown ();
+					}
+					break;
+				}
+			default:
+				{ break; }
+		}
+		this.state = newState;
 	}
 
 	void FixedUpdate () {
-		// Agent reached destination
+		//	Debug.Log("State : " + this.state);
 		if (Vector3.Distance (agent.transform.position, agent.destination) <= 0.5f) {
-			anim_speed (0);
-			anim_stand ();
-			if (isOnBed) {
-				anim_lieDown ();
+			if (isUp ()) {
+				handleNewState (State.LYINGONBED);
+			} else {
+				handleNewState (State.STOPPEDATFLOOR);
 			}
-		}
+		} else {
+			if (agent.isOnOffMeshLink) {
+				if (!isUp ()) {
+					if (state != State.JUMPINGLOW)
+						handleNewState (State.JUMPINGHIGH);
+				} else {
+					if (state != State.JUMPINGHIGH)
+						handleNewState (State.JUMPINGLOW);
+				}
 
-		// Agent reached jump/drop point
-		if (agent.isOnOffMeshLink) {
-			if (!jumped && !isOnBed) { // Don't jump if already jumped or dropping from bed
-				anim_jump ();
-				jumped = true;
-			}
-			// do jump / drop
-			OffMeshLinkData data = agent.currentOffMeshLinkData;
-			Vector3 endPos = data.endPos + Vector3.up * agent.baseOffset;
-			agent.transform.position = Vector3.MoveTowards (agent.transform.position, endPos, agent.speed * Time.deltaTime);
-			// Agent reached jump/drop target point
-			if (agent.transform.position == endPos) {
-				agent.CompleteOffMeshLink ();
-				jumped = false;
-				isOnBed = isUp ();
+				OffMeshLinkData data = agent.currentOffMeshLinkData;
+				Vector3 endPos = data.endPos + Vector3.up * agent.baseOffset;
+				agent.transform.position = Vector3.MoveTowards (agent.transform.position, endPos, agent.speed * Time.deltaTime);
+				// Agent reached jump/drop target point
+				if (agent.transform.position == endPos) {
+					agent.CompleteOffMeshLink ();
+					if (!isUp ()) {
+						handleNewState (State.WALKING);
+					} else {
+						handleNewState (State.LYINGONBED);
+					}
+				}
+			} else {
+				handleNewState (State.WALKING);
 			}
 		}
 	}
 
 	// Movements
 	public void moveTo (Vector3 destination) {
-		anim_walk ();
 		agent.destination = destination;
 	}
 
@@ -106,44 +147,54 @@ public class AnimalControllerScript : MonoBehaviour {
 	}
 
 	private bool isUp () {
-		return agent.transform.position.y > 1.1f;
+		return agent.transform.position.y > 1.00f;
 	}
 
 	// Animation 
-
-	public void anim_stand () {
-		anim_idleState (0);
+	public void animWalk () {
+		setAnim ("Walk");
 	}
-	public void anim_sit () {
-		anim_idleState (1);
+	public void animRun () {
+		setAnim ("Run");
 	}
-	public void anim_lieDown () {
-		anim_idleState (2);
+	public void animIdled () {
+		setAnimOnce ("Idled");
 	}
-	public void anim_twoFeet () {
-		anim_idleState (3);
-	}
-	public void anim_bark () {
-		anim_trigger ("Bark");
+	public void animEat () {
+		setAnimOnce ("start & End Eating");
 	}
 
-	public void anim_jump () {
-		anim_trigger ("Jump");
+	public void animJumpHigh () {
+		setAnimOnce ("Jump High");
+	}
+	public void animJumpDown () {
+		setAnimOnce ("Jump Low");
 	}
 
-	private void anim_walk () {
-		anim_speed (speed);
+	public void animLieDown () {
+		setAnimOnce ("Lie Down");
 	}
 
-	private void anim_speed (float speed) {
-		anim.SetFloat ("Speed", Math.Abs (speed));
+	public void animRest () {
+		setAnimOnce ("Rest");
 	}
 
-	private void anim_idleState (int state) {
-		anim.SetFloat ("Idle State", state);
+	public void animStandUp () {
+		setAnimOnce ("Stund Up");
 	}
-	private void anim_trigger (String trigger) {
-		anim.SetTrigger (trigger);
+
+	public void animPee () {
+		setAnimOnce ("Pissing");
+	}
+
+	private void setAnim (String strAnim) {
+		this.anim.wrapMode = WrapMode.Loop;
+		this.anim.Play (strAnim);
+
+	}
+
+	private void setAnimOnce (String strAnim) {
+		this.anim.PlayQueued (strAnim, QueueMode.CompleteOthers);
 	}
 
 }
