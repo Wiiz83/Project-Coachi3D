@@ -13,6 +13,7 @@ public class AnimalControllerScript : MonoBehaviour {
 	Vector3 center_point;
 	Vector3 bed1_point;
 	Vector3 bed2_point;
+	Vector3 bowl_position;
 
 	State state;
 	StopState stopState;
@@ -22,6 +23,7 @@ public class AnimalControllerScript : MonoBehaviour {
 		center_point = GameObject.Find ("center_point").transform.position;
 		bed1_point = GameObject.Find ("bed1_point_dest").transform.position;
 		bed2_point = GameObject.Find ("bed2_point_dest").transform.position;
+		bowl_position = GameObject.Find ("bowl").transform.position;
 		anim = GetComponent<Animation> ();
 		agent = GetComponent<NavMeshAgent> ();
 		agent.autoTraverseOffMeshLink = false;
@@ -29,7 +31,6 @@ public class AnimalControllerScript : MonoBehaviour {
 		anim["Walk"].wrapMode = WrapMode.Loop;
 		handleNewState (State.STOPPED);
 		goToCenter ();
-		stopState = StopState.EATING;
 	}
 
 	void Update () {
@@ -41,6 +42,8 @@ public class AnimalControllerScript : MonoBehaviour {
 			goToBed1 ();
 		if (Input.GetKeyDown (KeyCode.F3))
 			goToBed2 ();
+		if (Input.GetKeyDown (KeyCode.F5))
+			goToBowlAndEat ();
 		if (Input.GetKeyDown (KeyCode.S))
 			stopMovement ();
 	}
@@ -132,6 +135,10 @@ public class AnimalControllerScript : MonoBehaviour {
 		}
 	}
 
+	private bool isUp () {
+		return agent.transform.position.y > 1.00f;
+	}
+
 	// Movements
 	public void moveTo (Vector3 destination) {
 		agent.destination = destination;
@@ -152,8 +159,11 @@ public class AnimalControllerScript : MonoBehaviour {
 		agent.destination = agent.transform.position;
 	}
 
-	private bool isUp () {
-		return agent.transform.position.y > 1.00f;
+	// Scenarios
+
+	public void goToBowlAndEat () {
+		moveTo (bowl_position - GameObject.Find ("side1").transform.position );
+		stopState = StopState.EATING;
 	}
 
 }
