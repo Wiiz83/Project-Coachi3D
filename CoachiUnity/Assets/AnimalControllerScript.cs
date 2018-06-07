@@ -4,7 +4,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
-public enum State { STOPPEDATFLOOR, LYINGONBED, WALKING, JUMPINGHIGH, JUMPINGLOW }
+public enum State { STOPPED, MOVING, JUMPINGHIGH, JUMPINGLOW }
+public enum StopState { STANDING, LYINGDOWN, EATING }
 
 public class AnimalControllerScript : MonoBehaviour {
 	Animation anim;
@@ -12,19 +13,23 @@ public class AnimalControllerScript : MonoBehaviour {
 	Vector3 center_point;
 	Vector3 bed1_point;
 	Vector3 bed2_point;
+
 	State state;
+	StopState stopState;
 
 	void Start () {
 		//rb = GetComponent<Rigidbody> ();
 		center_point = GameObject.Find ("center_point").transform.position;
-		bed1_point = GameObject.Find ("bed1_point").transform.position;
+		bed1_point = GameObject.Find ("bed1_point_dest").transform.position;
 		bed2_point = GameObject.Find ("bed2_point_dest").transform.position;
 		anim = GetComponent<Animation> ();
 		agent = GetComponent<NavMeshAgent> ();
 		agent.autoTraverseOffMeshLink = false;
 		agent.destination = agent.transform.position;
 		anim["Walk"].wrapMode = WrapMode.Loop;
-		handleNewState (State.STOPPEDATFLOOR);
+		handleNewState (State.STOPPED);
+		goToCenter ();
+		stopState = StopState.EATING;
 	}
 
 	void Update () {
@@ -50,44 +55,46 @@ public class AnimalControllerScript : MonoBehaviour {
 		}
 		logState (newState);
 		switch (newState) {
-			case State.STOPPEDATFLOOR:
+			case State.STOPPED:
 				{
-					this.anim.CrossFade ("Idled");
+					switch (stopState) {
+						case StopState.STANDING:
+							{
+								this.anim.CrossFade ("Idled");
+								break;
+							}
+						case StopState.LYINGDOWN:
+							{
+								this.anim.CrossFade ("Lie Down");
+								this.anim.CrossFadeQueued ("Rest");
+								break;
+							}
+						case StopState.EATING:
+							{
+								this.anim.CrossFade ("start & End Eating");
+								break;
+							}
+						default:
+							{ break; }
+					}
 					break;
 				}
-			case State.LYINGONBED:
+			case State.MOVING:
 				{
-					if (state == State.JUMPINGHIGH) {
-						this.anim.CrossFade ("Lie Down");
-						this.anim.CrossFadeQueued ("Rest");
-					} else
-						return;
-					break;
-				}
-			case State.WALKING:
-				{
-					if (state == State.JUMPINGLOW || state == State.WALKING || state == State.STOPPEDATFLOOR) {
-						this.anim.CrossFade ("Walk");
-					} else
-						return;
+					this.anim.CrossFade ("Walk");
 					break;
 
 				}
 			case State.JUMPINGHIGH:
 				{
-					if (state == State.WALKING || state == State.STOPPEDATFLOOR) {
+					if (state == State.MOVING || state == State.STOPPED) {
 						this.anim.CrossFade ("Jump High");
-					} else
-						return;
+					}
 					break;
 
 				}
 			case State.JUMPINGLOW:
 				{
-					if (state == State.LYINGONBED) {
-						this.anim.CrossFade ("Jump Low");
-					} else
-						return;
 					break;
 				}
 			default:
@@ -97,21 +104,19 @@ public class AnimalControllerScript : MonoBehaviour {
 	}
 
 	void FixedUpdate () {
-		//	Debug.Log("State : " + this.state);
 		if (Vector3.Distance (agent.transform.position, agent.destination) <= 0.5f) {
-			if (isUp ()) {
-				handleNewState (State.LYINGONBED);
-			} else {
-				handleNewState (State.STOPPEDATFLOOR);
-			}
+			handleNewState (State.STOPPED);
 		} else {
 			if (agent.isOnOffMeshLink) {
 				if (!isUp ()) {
-					if (state != State.JUMPINGLOW)
+					if (state != State.JUMPINGLOW) {
 						handleNewState (State.JUMPINGHIGH);
+						stopState = StopState.STANDING;
+					}
 				} else {
 					if (state != State.JUMPINGHIGH)
 						handleNewState (State.JUMPINGLOW);
+					stopState = StopState.LYINGDOWN;
 				}
 
 				OffMeshLinkData data = agent.currentOffMeshLinkData;
@@ -120,14 +125,9 @@ public class AnimalControllerScript : MonoBehaviour {
 				// Agent reached jump/drop target point
 				if (agent.transform.position == endPos) {
 					agent.CompleteOffMeshLink ();
-					if (!isUp ()) {						
-						handleNewState (State.WALKING);
-					} else {
-						handleNewState (State.LYINGONBED);
-					}
 				}
 			} else {
-				handleNewState (State.WALKING);
+				handleNewState (State.MOVING);
 			}
 		}
 	}
@@ -148,6 +148,7 @@ public class AnimalControllerScript : MonoBehaviour {
 	}
 
 	public void stopMovement () {
+		stopState = StopState.STANDING;
 		agent.destination = agent.transform.position;
 	}
 
