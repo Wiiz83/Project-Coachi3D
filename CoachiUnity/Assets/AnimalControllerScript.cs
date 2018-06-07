@@ -18,7 +18,7 @@ public class AnimalControllerScript : MonoBehaviour {
 		//rb = GetComponent<Rigidbody> ();
 		center_point = GameObject.Find ("center_point").transform.position;
 		bed1_point = GameObject.Find ("bed1_point").transform.position;
-		bed2_point = GameObject.Find ("bed2_point").transform.position;
+		bed2_point = GameObject.Find ("bed2_point_dest").transform.position;
 		anim = GetComponent<Animation> ();
 		agent = GetComponent<NavMeshAgent> ();
 		agent.autoTraverseOffMeshLink = false;
