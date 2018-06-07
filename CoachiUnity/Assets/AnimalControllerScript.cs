@@ -23,6 +23,7 @@ public class AnimalControllerScript : MonoBehaviour {
 		agent = GetComponent<NavMeshAgent> ();
 		agent.autoTraverseOffMeshLink = false;
 		agent.destination = agent.transform.position;
+		anim["Walk"].wrapMode = WrapMode.Loop;
 		handleNewState (State.STOPPEDATFLOOR);
 	}
 
@@ -30,7 +31,7 @@ public class AnimalControllerScript : MonoBehaviour {
 
 		// move
 		if (Input.GetKeyDown (KeyCode.F1))
-			animLieDown ();
+			goToCenter ();
 		if (Input.GetKeyDown (KeyCode.F2))
 			goToBed1 ();
 		if (Input.GetKeyDown (KeyCode.F3))
@@ -51,38 +52,42 @@ public class AnimalControllerScript : MonoBehaviour {
 		switch (newState) {
 			case State.STOPPEDATFLOOR:
 				{
-					animIdled ();
+					this.anim.CrossFade ("Idled");
 					break;
 				}
 			case State.LYINGONBED:
 				{
 					if (state == State.JUMPINGHIGH) {
-						animLieDown ();
-						animRest ();
-					}
+						this.anim.CrossFade ("Lie Down");
+						this.anim.CrossFadeQueued ("Rest");
+					} else
+						return;
 					break;
 				}
 			case State.WALKING:
 				{
 					if (state == State.JUMPINGLOW || state == State.WALKING || state == State.STOPPEDATFLOOR) {
-						animWalk ();
-					}
+						this.anim.CrossFade ("Walk");
+					} else
+						return;
 					break;
 
 				}
 			case State.JUMPINGHIGH:
 				{
 					if (state == State.WALKING || state == State.STOPPEDATFLOOR) {
-						animJumpHigh ();
-					}
+						this.anim.CrossFade ("Jump High");
+					} else
+						return;
 					break;
 
 				}
 			case State.JUMPINGLOW:
 				{
 					if (state == State.LYINGONBED) {
-						animJumpDown ();
-					}
+						this.anim.CrossFade ("Jump Low");
+					} else
+						return;
 					break;
 				}
 			default:
@@ -115,7 +120,7 @@ public class AnimalControllerScript : MonoBehaviour {
 				// Agent reached jump/drop target point
 				if (agent.transform.position == endPos) {
 					agent.CompleteOffMeshLink ();
-					if (!isUp ()) {
+					if (!isUp ()) {						
 						handleNewState (State.WALKING);
 					} else {
 						handleNewState (State.LYINGONBED);
@@ -148,53 +153,6 @@ public class AnimalControllerScript : MonoBehaviour {
 
 	private bool isUp () {
 		return agent.transform.position.y > 1.00f;
-	}
-
-	// Animation 
-	public void animWalk () {
-		setAnim ("Walk");
-	}
-	public void animRun () {
-		setAnim ("Run");
-	}
-	public void animIdled () {
-		setAnimOnce ("Idled");
-	}
-	public void animEat () {
-		setAnimOnce ("start & End Eating");
-	}
-
-	public void animJumpHigh () {
-		setAnimOnce ("Jump High");
-	}
-	public void animJumpDown () {
-		setAnimOnce ("Jump Low");
-	}
-
-	public void animLieDown () {
-		setAnimOnce ("Lie Down");
-	}
-
-	public void animRest () {
-		setAnimOnce ("Rest");
-	}
-
-	public void animStandUp () {
-		setAnimOnce ("Stund Up");
-	}
-
-	public void animPee () {
-		setAnimOnce ("Pissing");
-	}
-
-	private void setAnim (String strAnim) {
-		this.anim.wrapMode = WrapMode.Loop;
-		this.anim.Play (strAnim);
-
-	}
-
-	private void setAnimOnce (String strAnim) {
-		this.anim.PlayQueued (strAnim, QueueMode.CompleteOthers);
 	}
 
 }
