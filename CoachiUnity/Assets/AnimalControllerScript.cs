@@ -30,14 +30,9 @@ public class AnimalControllerScript : MonoBehaviour {
 		agent.destination = agent.transform.position;
 		anim["Walk"].wrapMode = WrapMode.Loop;
 		setMovementState (MOVEMENT_STATE.STOPPED);
-		goToCenter ();
-		Debug.Log ("Start : head:" + GameObject.Find ("head").transform.position);
-
 	}
 
 	void Update () {
-
-		// move
 		if (Input.GetKeyDown (KeyCode.F1))
 			goToCenter ();
 		if (Input.GetKeyDown (KeyCode.F2))
@@ -48,18 +43,87 @@ public class AnimalControllerScript : MonoBehaviour {
 			goToBowlAndEat ();
 		if (Input.GetKeyDown (KeyCode.S))
 			stopMovement ();
+	}	
+
+	// Movements	
+
+	public void goToBed1 () {
+		setStoppedState (STOPPED_STATE.LYINGDOWN);
+		moveTo (bed1_point);
+		agent.stoppingDistance = 0f;
+	}
+	public void goToBed2 () {
+		setStoppedState (STOPPED_STATE.LYINGDOWN);
+		moveTo (bed2_point);
+		agent.stoppingDistance = 0f;
+	}
+	public void goToCenter () {
+		setStoppedState (STOPPED_STATE.STANDING);
+		moveTo (center_point);
+		agent.stoppingDistance = 0f;
 	}
 
-	private void logMoveState (MOVEMENT_STATE newState) {
-		Debug.Log ("MOVEMENT_STATE : " + this.movState + "-->"+newState) ;
+	public void stopMovement () {
+		setStoppedState (STOPPED_STATE.STANDING);
+		agent.destination = agent.transform.position;
 	}
 
-	private void logStopState () {
-		Debug.Log ("STOP_STATE : " + this.stopState);
+	private void moveTo (Vector3 destination) {
+		agent.destination = destination;
 	}
+
+	// Scenarios
+
+	public void goToBowlAndEat () {
+		setStoppedState (STOPPED_STATE.EATING);
+		moveTo (bowl_position);
+		agent.stoppingDistance = 1.7f;
+	}
+
+	/////////////////////*************************************************/////////////////////
+
+	void FixedUpdate () {
+		if (Vector3.Distance (agent.transform.position, agent.destination) <= stopRadius ()) {
+			setMovementState (MOVEMENT_STATE.STOPPED);
+		} else {
+			if (agent.isOnOffMeshLink) {
+				if (!isUp ()) {
+					if (movState != MOVEMENT_STATE.JUMPINGLOW) {
+						setMovementState (MOVEMENT_STATE.JUMPINGHIGH);
+					}
+				} else {
+					if (movState != MOVEMENT_STATE.JUMPINGHIGH)
+						setMovementState (MOVEMENT_STATE.JUMPINGLOW);
+				}
+
+				OffMeshLinkData data = agent.currentOffMeshLinkData;
+				Vector3 endPos = data.endPos + Vector3.up * agent.baseOffset;
+				agent.transform.position = Vector3.MoveTowards (agent.transform.position, endPos, agent.speed * Time.deltaTime);
+				if (agent.transform.position == endPos) {
+					agent.CompleteOffMeshLink ();
+				}
+			} else {
+				setMovementState (MOVEMENT_STATE.MOVING);
+			}
+		}
+	}
+
+	private bool isUp () {
+		return agent.transform.position.y > 1.00f;
+	}
+
+	private float stopRadius () {
+		if (stopState == STOPPED_STATE.EATING) {
+			return 1.8f;
+		} else {
+			return 0.5f;
+		}
+	}	
+
+	// State machine
 
 	private void handleStoppedState () {
-		logStopState ();
+		Debug.Log ("HANDLING STOPPED_STATE : " + this.stopState);
 		switch (this.stopState) {
 			case STOPPED_STATE.STANDING:
 				{
@@ -80,6 +144,14 @@ public class AnimalControllerScript : MonoBehaviour {
 			default:
 				{ break; }
 		}
+	}
+
+	private void setStoppedState (STOPPED_STATE newState) {
+		if (stopState == newState) {
+			return;
+		}
+		logStopState (newState);
+		this.stopState = newState;
 	}
 
 	private void setMovementState (MOVEMENT_STATE newState) {
@@ -119,74 +191,12 @@ public class AnimalControllerScript : MonoBehaviour {
 		this.movState = newState;
 	}
 
-	private float stopRadius () {
-		if (stopState == STOPPED_STATE.EATING) {
-			return 1.8f;
-		} else {
-			return 0.5f;
-		}
+	private void logMoveState (MOVEMENT_STATE newState) {
+		Debug.Log ("MOVEMENT_STATE : " + this.movState + "-->" + newState);
 	}
 
-	void FixedUpdate () {
-		if (Vector3.Distance (agent.transform.position, agent.destination) <= stopRadius ()) {
-			setMovementState (MOVEMENT_STATE.STOPPED);
-		} else {
-			if (agent.isOnOffMeshLink) {
-				if (!isUp ()) {
-					if (movState != MOVEMENT_STATE.JUMPINGLOW) {
-						setMovementState (MOVEMENT_STATE.JUMPINGHIGH);
-					}
-				} else {
-					if (movState != MOVEMENT_STATE.JUMPINGHIGH)
-						setMovementState (MOVEMENT_STATE.JUMPINGLOW);
-				}
-
-				OffMeshLinkData data = agent.currentOffMeshLinkData;
-				Vector3 endPos = data.endPos + Vector3.up * agent.baseOffset;
-				agent.transform.position = Vector3.MoveTowards (agent.transform.position, endPos, agent.speed * Time.deltaTime);
-				// Agent reached jump/drop target point
-				if (agent.transform.position == endPos) {
-					agent.CompleteOffMeshLink ();
-				}
-			} else {
-				setMovementState (MOVEMENT_STATE.MOVING);
-			}
-		}
-	}
-
-	private bool isUp () {
-		return agent.transform.position.y > 1.00f;
-	}
-
-	// Movements
-	public void moveTo (Vector3 destination) {
-		agent.destination = destination;
-	}
-
-	public void goToBed1 () {
-		stopState = STOPPED_STATE.LYINGDOWN;
-		moveTo (bed1_point);
-	}
-	public void goToBed2 () {
-		stopState = STOPPED_STATE.LYINGDOWN;
-		moveTo (bed2_point);
-	}
-	public void goToCenter () {
-		stopState = STOPPED_STATE.STANDING;
-		moveTo (center_point);
-	}
-
-	public void stopMovement () {
-		stopState = STOPPED_STATE.STANDING;
-		agent.destination = agent.transform.position;
-	}
-
-	// Scenarios
-
-	public void goToBowlAndEat () {
-		stopState = STOPPED_STATE.EATING;
-		moveTo (bowl_position);
-		agent.stoppingDistance = 1.7f;
+	private void logStopState (STOPPED_STATE newState) {
+		Debug.Log ("STOPPED_STATE : " + this.stopState + "-->" + newState);
 	}
 
 }
