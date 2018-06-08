@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
-public enum State { STOPPED, MOVING, JUMPINGHIGH, JUMPINGLOW }
-public enum StopState { STANDING, LYINGDOWN, EATING }
+public enum MOVEMENT_STATE { STOPPED, MOVING, JUMPINGHIGH, JUMPINGLOW }
+public enum STOPPED_STATE { STANDING, LYINGDOWN, EATING }
 
 public class AnimalControllerScript : MonoBehaviour {
 	Animation anim;
@@ -15,8 +15,8 @@ public class AnimalControllerScript : MonoBehaviour {
 	Vector3 bed2_point;
 	Vector3 bowl_position;
 
-	State state;
-	StopState stopState;
+	MOVEMENT_STATE movState;
+	STOPPED_STATE stopState;
 
 	void Start () {
 		//rb = GetComponent<Rigidbody> ();
@@ -29,8 +29,10 @@ public class AnimalControllerScript : MonoBehaviour {
 		agent.autoTraverseOffMeshLink = false;
 		agent.destination = agent.transform.position;
 		anim["Walk"].wrapMode = WrapMode.Loop;
-		handleNewState (State.STOPPED);
+		setMovementState (MOVEMENT_STATE.STOPPED);
 		goToCenter ();
+		Debug.Log ("Start : head:" + GameObject.Find ("head").transform.position);
+
 	}
 
 	void Update () {
@@ -48,78 +50,95 @@ public class AnimalControllerScript : MonoBehaviour {
 			stopMovement ();
 	}
 
-	private void logState (State newState) {
-		Debug.Log ("State : " + this.state + " -->" + newState);
+	private void logMoveState () {
+		Debug.Log ("MOVEMENT_STATE : " + this.movState);
 	}
 
-	private void handleNewState (State newState) {
-		if (state == newState) {
-			return;
-		}
-		logState (newState);
+	private void logStopState () {
+		Debug.Log ("STOP_STATE : " + this.stopState);
+	}
+
+	private void handleStoppedState () {
+		logStopState (stopState);
 		switch (newState) {
-			case State.STOPPED:
+			case STOPPED_STATE.STANDING:
 				{
-					switch (stopState) {
-						case StopState.STANDING:
-							{
-								this.anim.CrossFade ("Idled");
-								break;
-							}
-						case StopState.LYINGDOWN:
-							{
-								this.anim.CrossFade ("Lie Down");
-								this.anim.CrossFadeQueued ("Rest");
-								break;
-							}
-						case StopState.EATING:
-							{
-								this.anim.CrossFade ("start & End Eating");
-								break;
-							}
-						default:
-							{ break; }
-					}
+					this.anim.CrossFade ("Idled");
 					break;
 				}
-			case State.MOVING:
+			case STOPPED_STATE.LYINGDOWN:
+				{
+					this.anim.CrossFade ("Lie Down");
+					this.anim.CrossFadeQueued ("Rest");
+					break;
+				}
+			case STOPPED_STATE.EATING:
+				{
+					this.anim.CrossFade ("start & End Eating");
+					break;
+				}
+			default:
+				{ break; }
+		}
+	}
+
+	private void setMovementState (MOVEMENT_STATE newState) {
+		if (movState == newState) {
+			return;
+		}
+
+		logMoveState (newState);
+
+		switch (newState) {
+			case MOVEMENT_STATE.STOPPED:
+				{
+					handleStoppedState ();
+					break;
+				}
+
+			case MOVEMENT_STATE.MOVING:
 				{
 					this.anim.CrossFade ("Walk");
 					break;
-
 				}
-			case State.JUMPINGHIGH:
+			case MOVEMENT_STATE.JUMPINGHIGH:
 				{
-					if (state == State.MOVING || state == State.STOPPED) {
+					if (movState == MOVEMENT_STATE.MOVING || movState == MOVEMENT_STATE.STOPPED) {
 						this.anim.CrossFade ("Jump High");
 					}
 					break;
 
 				}
-			case State.JUMPINGLOW:
+			case MOVEMENT_STATE.JUMPINGLOW:
 				{
 					break;
 				}
 			default:
 				{ break; }
 		}
-		this.state = newState;
+		this.movState = newState;
+	}
+
+	private float stopRadius () {
+		if (stopState == STOPPED_STATE.EATING) {
+			return 1.8f;
+		} else {
+			return 0.5f;
+		}
 	}
 
 	void FixedUpdate () {
-		if (Vector3.Distance (agent.transform.position, agent.destination) <= 0.5f) {
-			handleNewState (State.STOPPED);
+		if (Vector3.Distance (agent.transform.position, agent.destination) <= stopRadius ()) {
+			setMovementState (MOVEMENT_STATE.STOPPED);
 		} else {
 			if (agent.isOnOffMeshLink) {
 				if (!isUp ()) {
-					if (state != State.JUMPINGLOW) {
-						handleNewState (State.JUMPINGHIGH);
-						stopState = StopState.STANDING;
+					if (movState != MOVEMENT_STATE.JUMPINGLOW) {
+						setMovementState (MOVEMENT_STATE.JUMPINGHIGH);
 					}
 				} else {
-					if (state != State.JUMPINGHIGH)
-						handleNewState (State.JUMPINGLOW);
-					stopState = StopState.LYINGDOWN;
+					if (movState != MOVEMENT_STATE.JUMPINGHIGH)
+						setMovementState (MOVEMENT_STATE.JUMPINGLOW);
 				}
 
 				OffMeshLinkData data = agent.currentOffMeshLinkData;
@@ -130,7 +149,7 @@ public class AnimalControllerScript : MonoBehaviour {
 					agent.CompleteOffMeshLink ();
 				}
 			} else {
-				handleNewState (State.MOVING);
+				setMovementState (MOVEMENT_STATE.MOVING);
 			}
 		}
 	}
@@ -145,25 +164,29 @@ public class AnimalControllerScript : MonoBehaviour {
 	}
 
 	public void goToBed1 () {
+		stopState = STOPPED_STATE.LYINGDOWN;
 		moveTo (bed1_point);
 	}
 	public void goToBed2 () {
+		stopState = STOPPED_STATE.LYINGDOWN;
 		moveTo (bed2_point);
 	}
 	public void goToCenter () {
+		stopState = STOPPED_STATE.STANDING;
 		moveTo (center_point);
 	}
 
 	public void stopMovement () {
-		stopState = StopState.STANDING;
+		stopState = STOPPED_STATE.STANDING;
 		agent.destination = agent.transform.position;
 	}
 
 	// Scenarios
 
 	public void goToBowlAndEat () {
-		moveTo (bowl_position - GameObject.Find ("side1").transform.position );
-		stopState = StopState.EATING;
+		stopState = STOPPED_STATE.EATING;
+		moveTo (bowl_position);
+		agent.stoppingDistance = 1.7f;
 	}
 
 }
