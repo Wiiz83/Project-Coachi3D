@@ -50,8 +50,8 @@ public class AnimalControllerScript : MonoBehaviour {
 			stopMovement ();
 	}
 
-	private void logMoveState () {
-		Debug.Log ("MOVEMENT_STATE : " + this.movState);
+	private void logMoveState (MOVEMENT_STATE newState) {
+		Debug.Log ("MOVEMENT_STATE : " + this.movState + "-->"+newState) ;
 	}
 
 	private void logStopState () {
@@ -59,8 +59,8 @@ public class AnimalControllerScript : MonoBehaviour {
 	}
 
 	private void handleStoppedState () {
-		logStopState (stopState);
-		switch (newState) {
+		logStopState ();
+		switch (this.stopState) {
 			case STOPPED_STATE.STANDING:
 				{
 					this.anim.CrossFade ("Idled");
