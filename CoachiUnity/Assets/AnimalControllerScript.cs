@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.AI;
 
 public enum MOVEMENT_STATE { STOPPED, MOVING, JUMPINGHIGH, JUMPINGLOW }
-public enum STOPPED_STATE { STANDING, LYINGDOWN, EATING }
+public enum STOPPED_STATE { STANDING, LYINGDOWN, EATING, PLAYING }
 
 public class AnimalControllerScript : MonoBehaviour {
 	Animation anim;
@@ -19,7 +19,6 @@ public class AnimalControllerScript : MonoBehaviour {
 	STOPPED_STATE stopState;
 
 	void Start () {
-		//rb = GetComponent<Rigidbody> ();
 		center_point = GameObject.Find ("center_point").transform.position;
 		bed1_point = GameObject.Find ("bed1_point_dest").transform.position;
 		bed2_point = GameObject.Find ("bed2_point_dest").transform.position;
@@ -41,9 +40,11 @@ public class AnimalControllerScript : MonoBehaviour {
 			goToBed2 ();
 		if (Input.GetKeyDown (KeyCode.F5))
 			goToBowlAndEat ();
+		if (Input.GetKeyDown (KeyCode.F6))
+			goToCenterAndPlay ();
 		if (Input.GetKeyDown (KeyCode.S))
 			stopMovement ();
-	}	
+	}
 
 	// Movements	
 
@@ -78,6 +79,12 @@ public class AnimalControllerScript : MonoBehaviour {
 		setStoppedState (STOPPED_STATE.EATING);
 		moveTo (bowl_position);
 		agent.stoppingDistance = 1.7f;
+	}
+
+	public void goToCenterAndPlay () {
+		setStoppedState (STOPPED_STATE.PLAYING);
+		moveTo (center_point);
+		agent.stoppingDistance = 0f;
 	}
 
 	/////////////////////*************************************************/////////////////////
@@ -118,7 +125,7 @@ public class AnimalControllerScript : MonoBehaviour {
 		} else {
 			return 0.5f;
 		}
-	}	
+	}
 
 	// State machine
 
@@ -139,6 +146,15 @@ public class AnimalControllerScript : MonoBehaviour {
 			case STOPPED_STATE.EATING:
 				{
 					this.anim.CrossFade ("start & End Eating");
+					break;
+				}
+			case STOPPED_STATE.PLAYING:
+				{
+					this.anim.CrossFade ("Jump High");
+					this.anim.CrossFadeQueued ("Hit Right");
+					this.anim.CrossFadeQueued ("Barking");
+					this.anim.CrossFadeQueued ("Hit Front");
+					this.anim.CrossFadeQueued ("Idled");
 					break;
 				}
 			default:
