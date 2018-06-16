@@ -150,6 +150,7 @@ public class AnimalControllerScript : MonoBehaviour {
 				}
 			case STOPPED_STATE.PLAYING:
 				{
+					GetComponent<AudioSource> ().PlayDelayed (2);
 					this.anim.CrossFade ("Jump High");
 					this.anim.CrossFadeQueued ("Hit Right");
 					this.anim.CrossFadeQueued ("Barking");
