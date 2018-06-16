@@ -426,9 +426,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   target: {fileID: 57461266}
   damping: 6
-  smooth: 1
-  minDistance: 3
-  property: 
 --- !u!81 &231095699
 AudioListener:
   m_ObjectHideFlags: 0
@@ -466,11 +463,11 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.3
+  near clip plane: 2
   far clip plane: 1000
   field of view: 110.54239
   orthographic: 1
-  orthographic size: 2.5
+  orthographic size: 3
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
@@ -493,7 +490,7 @@ Transform:
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 231095697}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.43, y: 4.49, z: 5.97}
+  m_LocalPosition: {x: 2.15, y: 4.91, z: 6.32}
   m_LocalScale: {x: 0.017444544, y: 0.39933673, z: 0.39933673}
   m_Children: []
   m_Father: {fileID: 0}
@@ -2592,7 +2589,7 @@ Prefab:
     m_Modifications:
     - target: {fileID: 400070, guid: 1190d2a3810de0040bb231b17ff2884f, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -0.023493804
+      value: -8.9
       objectReference: {fileID: 0}
     - target: {fileID: 400070, guid: 1190d2a3810de0040bb231b17ff2884f, type: 3}
       propertyPath: m_LocalPosition.y
@@ -2600,7 +2597,7 @@ Prefab:
       objectReference: {fileID: 0}
     - target: {fileID: 400070, guid: 1190d2a3810de0040bb231b17ff2884f, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 6.689276
+      value: 8.88
       objectReference: {fileID: 0}
     - target: {fileID: 400070, guid: 1190d2a3810de0040bb231b17ff2884f, type: 3}
       propertyPath: m_LocalRotation.x
