@@ -263,9 +263,4 @@ public class AnimalControllerScript : MonoBehaviour {
 	private void logStopState (STOPPED_STATE newState) {
 		Debug.Log ("STOPPED_STATE : " + this.futureStopState + "-->" + newState);
 	}
-
-	private void RotateTowards (Vector3 direction) {
-		Quaternion lookRotation = Quaternion.LookRotation (direction);
-		transform.rotation = Quaternion.Slerp (transform.rotation, lookRotation, Time.deltaTime * 1f);
-	}
 }
