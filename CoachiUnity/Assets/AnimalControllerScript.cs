@@ -14,21 +14,27 @@ public class AnimalControllerScript : MonoBehaviour {
 	Vector3 bed1_point;
 	Vector3 bed2_point;
 	Vector3 bowl_position;
+	Vector3 play_point;
 
-	MOVEMENT_STATE movState;
-	STOPPED_STATE stopState;
+	MOVEMENT_STATE previousMovState;
+	STOPPED_STATE futureStopState;
+	STOPPED_STATE previousStopState;
 
 	void Start () {
 		center_point = GameObject.Find ("center_point").transform.position;
 		bed1_point = GameObject.Find ("bed1_point_dest").transform.position;
 		bed2_point = GameObject.Find ("bed2_point_dest").transform.position;
 		bowl_position = GameObject.Find ("bowl").transform.position;
+		play_point = GameObject.Find ("play_point").transform.position;
 		anim = GetComponent<Animation> ();
 		agent = GetComponent<NavMeshAgent> ();
 		agent.autoTraverseOffMeshLink = false;
 		agent.destination = agent.transform.position;
 		anim["Walk"].wrapMode = WrapMode.Loop;
+		anim["Simple Idle"].wrapMode = WrapMode.Loop;
+		anim["Rest"].wrapMode = WrapMode.Loop;
 		setMovementState (MOVEMENT_STATE.STOPPED);
+		setStoppedState (STOPPED_STATE.STANDING);
 	}
 
 	void Update () {
@@ -49,24 +55,25 @@ public class AnimalControllerScript : MonoBehaviour {
 	// Movements	
 
 	public void goToBed1 () {
-		setStoppedState (STOPPED_STATE.LYINGDOWN);
 		moveTo (bed1_point);
 		agent.stoppingDistance = 0f;
+		setStoppedState (STOPPED_STATE.LYINGDOWN);
+
 	}
 	public void goToBed2 () {
-		setStoppedState (STOPPED_STATE.LYINGDOWN);
 		moveTo (bed2_point);
 		agent.stoppingDistance = 0f;
+		setStoppedState (STOPPED_STATE.LYINGDOWN);
 	}
 	public void goToCenter () {
-		setStoppedState (STOPPED_STATE.STANDING);
 		moveTo (center_point);
 		agent.stoppingDistance = 0f;
+		setStoppedState (STOPPED_STATE.STANDING);
 	}
 
 	public void stopMovement () {
-		setStoppedState (STOPPED_STATE.STANDING);
 		agent.destination = agent.transform.position;
+		setStoppedState (STOPPED_STATE.STANDING);
 	}
 
 	private void moveTo (Vector3 destination) {
@@ -76,30 +83,37 @@ public class AnimalControllerScript : MonoBehaviour {
 	// Scenarios
 
 	public void goToBowlAndEat () {
-		setStoppedState (STOPPED_STATE.EATING);
 		moveTo (bowl_position);
 		agent.stoppingDistance = 1.7f;
+		setStoppedState (STOPPED_STATE.EATING);
 	}
 
 	public void goToCenterAndPlay () {
-		setStoppedState (STOPPED_STATE.PLAYING);
-		moveTo (center_point);
+		moveTo (play_point);
 		agent.stoppingDistance = 0f;
+		setStoppedState (STOPPED_STATE.PLAYING);
 	}
 
 	/////////////////////*************************************************/////////////////////
 
 	void FixedUpdate () {
+		if (this.anim.IsPlaying ("Stund Up")) {
+			agent.speed = 0f;
+		} else {
+			agent.speed = 5f;
+		}
 		if (Vector3.Distance (agent.transform.position, agent.destination) <= stopRadius ()) {
 			setMovementState (MOVEMENT_STATE.STOPPED);
+			if (this.futureStopState == STOPPED_STATE.PLAYING)
+				transform.LookAt (GameObject.Find ("Camera").transform.position);
 		} else {
 			if (agent.isOnOffMeshLink) {
 				if (!isUp ()) {
-					if (movState != MOVEMENT_STATE.JUMPINGLOW) {
+					if (previousMovState != MOVEMENT_STATE.JUMPINGLOW) {
 						setMovementState (MOVEMENT_STATE.JUMPINGHIGH);
 					}
 				} else {
-					if (movState != MOVEMENT_STATE.JUMPINGHIGH)
+					if (previousMovState != MOVEMENT_STATE.JUMPINGHIGH)
 						setMovementState (MOVEMENT_STATE.JUMPINGLOW);
 				}
 
@@ -120,21 +134,21 @@ public class AnimalControllerScript : MonoBehaviour {
 	}
 
 	private float stopRadius () {
-		if (stopState == STOPPED_STATE.EATING) {
+		if (futureStopState == STOPPED_STATE.EATING) {
 			return 1.8f;
 		} else {
 			return 0.5f;
 		}
 	}
 
-	// State machine
+	// Animations 
 
-	private void handleStoppedState () {
-		Debug.Log ("HANDLING STOPPED_STATE : " + this.stopState);
-		switch (this.stopState) {
+	private void animateStopping () {
+		Debug.Log ("HANDLING STOPPED_STATE : " + this.futureStopState);
+		switch (this.futureStopState) {
 			case STOPPED_STATE.STANDING:
 				{
-					this.anim.CrossFade ("Idled");
+					this.anim.CrossFade ("Simple Idle");
 					break;
 				}
 			case STOPPED_STATE.LYINGDOWN:
@@ -150,12 +164,42 @@ public class AnimalControllerScript : MonoBehaviour {
 				}
 			case STOPPED_STATE.PLAYING:
 				{
-					GetComponent<AudioSource> ().PlayDelayed (2);
-					this.anim.CrossFade ("Jump High");
-					this.anim.CrossFadeQueued ("Hit Right");
-					this.anim.CrossFadeQueued ("Barking");
-					this.anim.CrossFadeQueued ("Hit Front");
-					this.anim.CrossFadeQueued ("Idled");
+					GetComponent<AudioSource> ().PlayDelayed (1);
+					this.anim.CrossFade ("Barking");
+					this.anim.CrossFadeQueued ("Attack");
+					this.anim.CrossFadeQueued ("Attack");
+					this.anim.CrossFadeQueued ("Lie Down");
+					this.anim.CrossFadeQueued ("Rest");
+					break;
+				}
+			default:
+				{ break; }
+		}
+	}
+
+	private void animateStartingToMove () {
+		Debug.Log ("HANDLING STOPPED -> MOVED : " + this.futureStopState);
+		switch (this.previousStopState) {
+			case STOPPED_STATE.STANDING:
+				{
+					this.anim.CrossFade ("Walk");
+					break;
+				}
+			case STOPPED_STATE.LYINGDOWN:
+				{
+					this.anim.CrossFade ("Stund Up");
+					this.anim.CrossFadeQueued ("Walk");
+					break;
+				}
+			case STOPPED_STATE.EATING:
+				{
+					this.anim.CrossFade ("Walk");
+					break;
+				}
+			case STOPPED_STATE.PLAYING:
+				{
+					this.anim.CrossFade ("Stund Up");
+					this.anim.CrossFadeQueued ("Walk");
 					break;
 				}
 			default:
@@ -164,15 +208,16 @@ public class AnimalControllerScript : MonoBehaviour {
 	}
 
 	private void setStoppedState (STOPPED_STATE newState) {
-		if (stopState == newState) {
+		if (futureStopState == newState) {
 			return;
 		}
 		logStopState (newState);
-		this.stopState = newState;
+		this.previousStopState = this.futureStopState;
+		this.futureStopState = newState;
 	}
 
 	private void setMovementState (MOVEMENT_STATE newState) {
-		if (movState == newState) {
+		if (previousMovState == newState) {
 			return;
 		}
 
@@ -181,18 +226,21 @@ public class AnimalControllerScript : MonoBehaviour {
 		switch (newState) {
 			case MOVEMENT_STATE.STOPPED:
 				{
-					handleStoppedState ();
+					animateStopping ();
 					break;
 				}
 
 			case MOVEMENT_STATE.MOVING:
 				{
-					this.anim.CrossFade ("Walk");
+					if (previousMovState == MOVEMENT_STATE.STOPPED)
+						animateStartingToMove ();
+					else
+						this.anim.CrossFade ("Walk");
 					break;
 				}
 			case MOVEMENT_STATE.JUMPINGHIGH:
 				{
-					if (movState == MOVEMENT_STATE.MOVING || movState == MOVEMENT_STATE.STOPPED) {
+					if (previousMovState == MOVEMENT_STATE.MOVING || previousMovState == MOVEMENT_STATE.STOPPED) {
 						this.anim.CrossFade ("Jump High");
 					}
 					break;
@@ -205,15 +253,19 @@ public class AnimalControllerScript : MonoBehaviour {
 			default:
 				{ break; }
 		}
-		this.movState = newState;
+		this.previousMovState = newState;
 	}
 
 	private void logMoveState (MOVEMENT_STATE newState) {
-		Debug.Log ("MOVEMENT_STATE : " + this.movState + "-->" + newState);
+		Debug.Log ("MOVEMENT_STATE : " + this.previousMovState + "-->" + newState);
 	}
 
 	private void logStopState (STOPPED_STATE newState) {
-		Debug.Log ("STOPPED_STATE : " + this.stopState + "-->" + newState);
+		Debug.Log ("STOPPED_STATE : " + this.futureStopState + "-->" + newState);
 	}
 
+	private void RotateTowards (Vector3 direction) {
+		Quaternion lookRotation = Quaternion.LookRotation (direction);
+		transform.rotation = Quaternion.Slerp (transform.rotation, lookRotation, Time.deltaTime * 1f);
+	}
 }
