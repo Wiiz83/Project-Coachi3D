@@ -98,9 +98,9 @@ public class AnimalControllerScript : MonoBehaviour {
 
 	void FixedUpdate () {
 		if (this.anim.IsPlaying ("Stund Up")) {
-			agent.speed = 0f;
+			agent.isStopped = true;
 		} else {
-			agent.speed = 5f;
+			agent.isStopped = false;;
 		}
 		if (Vector3.Distance (agent.transform.position, agent.destination) <= stopRadius ()) {
 			setMovementState (MOVEMENT_STATE.STOPPED);
